@@ -9,6 +9,11 @@ spring:
     password: 123zxc
     timeout: 5000
 
+  data:
+    redis:
+      repositories:
+        enabled: false
+
 jwt:
   expiration:
     duration: 3600
