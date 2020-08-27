@@ -27,7 +27,7 @@ public class SysUser implements DataChange {
 
     private String avatar;
 
-    @JsonIgnore   // 请求返回json不希望显示的字段
+//    @JsonIgnore   // 请求返回json不希望显示的字段
     private String password;
 
     private String email;

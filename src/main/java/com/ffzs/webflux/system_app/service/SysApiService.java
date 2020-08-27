@@ -46,8 +46,8 @@ public class SysApiService {
                 .flatMap(this::addRoles);
     }
 
-    public Mono<SysApi> findByUrl (String url) {
-        return sysApiRepository.findByUrl(url)
+    public Flux<SysApi> findByUrl (String url) {
+        return sysApiRepository.findAllByUrl(url)
                 .flatMap(this::addRoles);
     }
 

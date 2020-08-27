@@ -4,8 +4,10 @@ import com.ffzs.webflux.system_app.model.SysHttpResponse;
 import com.ffzs.webflux.system_app.model.SysUser;
 import com.ffzs.webflux.system_app.service.SysUserService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -18,6 +20,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/user")
+@Slf4j
 public class SysUserController {
 
     private final SysUserService sysUserService;
@@ -38,13 +41,15 @@ public class SysUserController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     Mono<SysHttpResponse> save (@RequestBody SysUser user) {
+        log.info("user {}", user);
         return sysUserService.save(user)
                 .map(it->SysHttpResponse
                         .builder()
                         .status(HttpStatus.OK.value())
                         .message("存储成功")
-                        .data(it)
+                        .data(it.withPassword(null))
                         .build()
                 )
                 .onErrorResume(err -> {
@@ -57,6 +62,7 @@ public class SysUserController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     Mono<SysHttpResponse> update (@RequestBody SysUser user) {
         return sysUserService.save(user)
                 .map(SysHttpResponse::ok)
@@ -64,6 +70,7 @@ public class SysUserController {
     }
 
     @DeleteMapping
+    @PreAuthorize("hasAnyRole('ADMIN')")
     Mono<Void> deleteById (@RequestParam("id") long id) {
         return sysUserService.deleteById(id);
     }

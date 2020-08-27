@@ -32,6 +32,7 @@ public class SecurityConfig {
         return http
                 .authorizeExchange()
                 .pathMatchers("/api/auth/**").permitAll()
+                .pathMatchers("/api/user/**").hasAnyRole("ADMIN", "HR")
                 .anyExchange().authenticated()
                 .and()
                 .addFilterAfter(jwtWebFilter, SecurityWebFiltersOrder.FIRST)  // 这里注意执行位置一定要在securityContextRepository

@@ -4,6 +4,7 @@ import com.ffzs.webflux.system_app.model.SysApi;
 import com.ffzs.webflux.system_app.model.SysHttpResponse;
 import com.ffzs.webflux.system_app.service.SysApiService;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -19,6 +20,7 @@ public class SysApiController {
     private final SysApiService sysApiService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     public Mono<SysHttpResponse> save (@RequestBody SysApi api) {
         return sysApiService.save(api)
                 .map(SysHttpResponse::ok)
@@ -26,6 +28,7 @@ public class SysApiController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     public Mono<SysHttpResponse> update (@RequestBody SysApi api) {
         return sysApiService.save(api)
                 .map(SysHttpResponse::ok)
@@ -43,11 +46,13 @@ public class SysApiController {
     @GetMapping
     public Mono<SysHttpResponse> findByUrl (@RequestParam("url") String url) {
         return sysApiService.findByUrl(url)
+                .collectList()
                 .map(SysHttpResponse::ok)
                 .onErrorResume(e -> Mono.just(SysHttpResponse.error5xx(e.getMessage(), e)));
     }
 
     @DeleteMapping
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public Mono<Void> delete (Long id) {
         return sysApiService.delete(id);
     }

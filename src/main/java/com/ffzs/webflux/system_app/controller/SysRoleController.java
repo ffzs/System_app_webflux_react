@@ -4,6 +4,7 @@ import com.ffzs.webflux.system_app.model.SysHttpResponse;
 import com.ffzs.webflux.system_app.model.SysRole;
 import com.ffzs.webflux.system_app.service.SysRoleService;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -20,6 +21,7 @@ public class SysRoleController {
     private final SysRoleService sysRoleService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     public Mono<SysHttpResponse> save (@RequestBody SysRole role) {
         return sysRoleService.save(role)
                 .map(SysHttpResponse::ok)
@@ -27,6 +29,7 @@ public class SysRoleController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     public Mono<SysHttpResponse> update (@RequestBody SysRole role) {
         return sysRoleService.save(role)
                 .map(SysHttpResponse::ok)
@@ -49,6 +52,7 @@ public class SysRoleController {
     }
 
     @DeleteMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     public Mono<Void> delete (Long id) {
         return sysRoleService.delete(id);
 
