@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -55,10 +56,11 @@ public class JwtWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        ServerHttpResponse response = exchange.getResponse();
+        if (request.getMethod() == HttpMethod.OPTIONS) return chain.filter(exchange);
         String path = request.getPath().value();
         Set<String> permitPath = new HashSet<>(List.of("/api/auth/login", "/api/auth/logout"));
         if (permitPath.contains(path)) return chain.filter(exchange);
+        ServerHttpResponse response = exchange.getResponse();
         String auth = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (auth == null) {
             return this.writeErrorMessage(response, HttpStatus.NOT_ACCEPTABLE, "没有携带token");
@@ -68,7 +70,7 @@ public class JwtWebFilter implements WebFilter {
         }
 
         String token = auth.substring(jwtSigner.getTokenPrefix().length());
-
+        log.info("token {}", token);
         return reactorTemplate.opsForSet().isMember("token_set", token)
                 .flatMap(isMember -> {
                     if (isMember) {

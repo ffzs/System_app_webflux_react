@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 @AllArgsConstructor
 @RequestMapping("/api/user")
 @Slf4j
+@CrossOrigin
 public class SysUserController {
 
     private final SysUserService sysUserService;

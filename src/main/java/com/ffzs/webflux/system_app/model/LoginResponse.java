@@ -17,7 +17,8 @@ import java.util.List;
 @With
 public class LoginResponse {
 
-    String username;
+    String userid;
+    String name;
     String email;
     String mobile;
     String avatar;
@@ -27,7 +28,8 @@ public class LoginResponse {
 
     public static LoginResponse fromUser (SysUser user) {
          return LoginResponse.builder()
-                 .username(user.getUsername())
+                 .userid(String.valueOf(user.getId()))
+                 .name(user.getUsername())
                  .email(user.getEmail())
                  .mobile(user.getMobile())
                  .avatar(user.getAvatar())

@@ -5,6 +5,7 @@ import com.ffzs.webflux.system_app.handler.JwtWebFilter;
 import com.ffzs.webflux.system_app.security.SecurityContextRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
@@ -32,13 +33,15 @@ public class SecurityConfig {
         return http
                 .authorizeExchange()
                 .pathMatchers("/api/auth/**").permitAll()
-                .pathMatchers("/api/user/**").hasAnyRole("ADMIN", "HR")
+                .pathMatchers(HttpMethod.OPTIONS).permitAll()
+//                .pathMatchers("/api/user/**").hasAnyRole("ADMIN", "HR")
+                .pathMatchers("/api/user/**").permitAll()
                 .anyExchange().authenticated()
                 .and()
                 .addFilterAfter(jwtWebFilter, SecurityWebFiltersOrder.FIRST)  // 这里注意执行位置一定要在securityContextRepository
                 .securityContextRepository(securityRepository)
                 .formLogin().disable()
-                .httpBasic().disable()
+            .httpBasic().disable()
                 .csrf().disable()
                 .logout().disable()
                 .build();
