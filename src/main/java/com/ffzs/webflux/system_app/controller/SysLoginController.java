@@ -34,7 +34,7 @@ public class SysLoginController {
 
     @PostMapping("login")
     public Mono<SysHttpResponse> login (@RequestBody Map<String, String> user) {
-
+        log.info("user {}", user);
         return Mono.justOrEmpty(user.get("username"))
                 .flatMap(sysUserService::findByUsername)
                 .filter(it -> password.matches(user.get("password"), it.getPassword()))
@@ -52,7 +52,10 @@ public class SysLoginController {
                                     .ok("成功登录", LoginResponse.fromUser(it).withToken(token));
                         }
                 )
-                .onErrorResume(e -> Mono.empty())
+                .onErrorResume(e -> {
+                    log.error("{} {}", e.getClass(), e.getMessage());
+                    return Mono.empty();
+                })
                 .switchIfEmpty(Mono.just(new SysHttpResponse(HttpStatus.UNAUTHORIZED.value(), "登录失败", null)));
     }
 

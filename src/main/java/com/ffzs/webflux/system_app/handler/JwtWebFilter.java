@@ -70,7 +70,7 @@ public class JwtWebFilter implements WebFilter {
         }
 
         String token = auth.substring(jwtSigner.getTokenPrefix().length());
-        log.info("token {}", token);
+
         return reactorTemplate.opsForSet().isMember("token_set", token)
                 .flatMap(isMember -> {
                     if (isMember) {

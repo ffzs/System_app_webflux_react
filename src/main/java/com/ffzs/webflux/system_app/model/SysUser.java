@@ -1,11 +1,7 @@
 package com.ffzs.webflux.system_app.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ffzs.webflux.system_app.repository.DataChange;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.With;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Table;
@@ -18,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @With
+@Builder
 public class SysUser implements DataChange {
 
     @Id

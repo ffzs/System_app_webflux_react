@@ -71,7 +71,6 @@ public class SysUserService {
                                         .flatMap(sysRoleRepository::findByName)
                         )
                         .map(SysRole::getId)
-
                 )
                 .flatMap(roleId -> sysUserRoleRepository
                         .findByUserIdAndRoleId(user.getId(), roleId)

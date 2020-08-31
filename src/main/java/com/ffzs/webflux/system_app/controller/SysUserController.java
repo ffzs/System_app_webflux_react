@@ -3,13 +3,18 @@ package com.ffzs.webflux.system_app.controller;
 import com.ffzs.webflux.system_app.model.SysHttpResponse;
 import com.ffzs.webflux.system_app.model.SysUser;
 import com.ffzs.webflux.system_app.service.SysUserService;
+import com.ffzs.webflux.system_app.service.UserDataFaker;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.util.List;
 
 
 /**
@@ -25,6 +30,7 @@ import reactor.core.publisher.Mono;
 public class SysUserController {
 
     private final SysUserService sysUserService;
+    private final UserDataFaker userDataFaker;
 
     @GetMapping
     Mono<SysHttpResponse> findByName (@RequestParam("username") String username) {
@@ -41,10 +47,14 @@ public class SysUserController {
                 .onErrorResume(e -> Mono.just(SysHttpResponse.error5xx(e.getMessage(), e)));
     }
 
+    @GetMapping("fake")
+    Flux<SysUser> fake (@RequestParam("count") Long count) throws IOException {
+        return userDataFaker.fakeUserData(count);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
     Mono<SysHttpResponse> save (@RequestBody SysUser user) {
-        log.info("user {}", user);
         return sysUserService.save(user)
                 .map(it->SysHttpResponse
                         .builder()

@@ -60,7 +60,7 @@ public class JwtSigner {
 
 
     public Claims parseToken (String token) {
-        log.info("token : {}", token);
+
         return Jwts
                 .parser()
                 .setSigningKey(key)
