@@ -20,7 +20,7 @@ import java.util.stream.Stream;
  * @Date: 2020/8/16 下午6:18
  */
 
-@Component
+//@Component
 @AllArgsConstructor
 @Slf4j
 public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
@@ -29,7 +29,7 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
-        log.info("访问 ReactiveAuthenticationManager  。。。。。。。。。。。");
+//        log.info("访问 ReactiveAuthenticationManager  。。。。。。。。。。。");
         return Mono.just(authentication)
                 .map(auth -> jwtSigner.parseToken(auth.getCredentials().toString()))
                 .onErrorResume(e -> {

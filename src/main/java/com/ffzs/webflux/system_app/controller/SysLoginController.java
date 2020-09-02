@@ -9,11 +9,14 @@ import com.ffzs.webflux.system_app.service.SysUserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.server.HttpServerRequest;
 
+import javax.naming.AuthenticationException;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +36,7 @@ public class SysLoginController {
     private final RedisService redisService;
 
     @PostMapping("login")
-    public Mono<SysHttpResponse> login (@RequestBody Map<String, String> user) {
-        log.info("user {}", user);
+    public Mono<SysHttpResponse> login (@RequestBody Map<String, String> user, ServerHttpResponse response) {
         return Mono.justOrEmpty(user.get("username"))
                 .flatMap(sysUserService::findByUsername)
                 .filter(it -> password.matches(user.get("password"), it.getPassword()))
@@ -45,8 +47,7 @@ public class SysLoginController {
                                     .username(it.getUsername())
                                     .password(user.get("password"))
                                     .authorities(roles)
-                                    .build()
-                            );
+                                    .build());
                             redisService.saveToken(token);
                             return SysHttpResponse
                                     .ok("成功登录", LoginResponse.fromUser(it).withToken(token));
@@ -56,7 +57,10 @@ public class SysLoginController {
                     log.error("{} {}", e.getClass(), e.getMessage());
                     return Mono.empty();
                 })
-                .switchIfEmpty(Mono.just(new SysHttpResponse(HttpStatus.UNAUTHORIZED.value(), "登录失败", null)));
+                .switchIfEmpty(Mono.fromCallable(() -> {
+                    response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return new SysHttpResponse(HttpStatus.UNAUTHORIZED.value(), "登录失败", null);
+                }));
     }
 
     @GetMapping("logout")

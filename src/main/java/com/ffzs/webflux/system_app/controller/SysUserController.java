@@ -8,13 +8,13 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.util.List;
 
 
 /**
@@ -33,6 +33,7 @@ public class SysUserController {
     private final UserDataFaker userDataFaker;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT', 'HR')")
     Mono<SysHttpResponse> findByName (@RequestParam("username") String username) {
         return sysUserService.findByUsername(username)
                 .map(SysHttpResponse::ok)
@@ -40,11 +41,9 @@ public class SysUserController {
     }
 
     @GetMapping("all")
-    Mono<SysHttpResponse> findAll () {
-        return sysUserService.findAll()
-                .collectList()
-                .map(SysHttpResponse::ok)
-                .onErrorResume(e -> Mono.just(SysHttpResponse.error5xx(e.getMessage(), e)));
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT', 'HR')")
+    Flux<SysUser> findAll () {
+        return sysUserService.findAll();
     }
 
     @GetMapping("fake")
@@ -52,9 +51,11 @@ public class SysUserController {
         return userDataFaker.fakeUserData(count);
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'IT')")
+    @ResponseStatus(value = HttpStatus.OK)
     Mono<SysHttpResponse> save (@RequestBody SysUser user) {
+
         return sysUserService.save(user)
                 .map(it->SysHttpResponse
                         .builder()

@@ -111,6 +111,15 @@ public class WriteExcelUtil {
 
     @SneakyThrows
     public static Mono<Workbook> data2Workbook (List<?> objs, Class<?> clazz) {
+        List<Field> fields = getFieldsInfo(clazz);
+        List<String> header = fields.stream()
+                .map(Field::getName)
+                .collect(Collectors.toList());
+        return data2Workbook(objs, clazz, header);
+    }
+
+    @SneakyThrows
+    public static Mono<Workbook> data2Workbook (List<?> objs, Class<?> clazz, List<String> header) {
 
         List<Field> fields = getFieldsInfo(clazz);
         List<Method> methods = Stream.of(clazz.getMethods())
@@ -119,10 +128,7 @@ public class WriteExcelUtil {
         List<String> methodNames = methods.stream()
                 .map(Method::getName)
                 .collect(Collectors.toList());
-        if (fields.isEmpty()) return Mono.empty();
-        List<String> header = fields.stream()
-                .map(Field::getName)
-                .collect(Collectors.toList());
+
 
         Workbook workbook = new SXSSFWorkbook();
         Sheet sheet = buildDataSheet(workbook, header);
@@ -131,7 +137,7 @@ public class WriteExcelUtil {
 
         for (int i = 0; i < objs.size(); i++) {
             Row row = sheet.createRow(i + 1);
-            Object obj = objs.get(i);
+            var obj = objs.get(i);
             for (int j = 0; j < header.size(); j++) {
                 Cell cell = row.createCell(j);
                 var methodName = "get" + header.get(j).substring(0, 1).toUpperCase() + header.get(j).substring(1);

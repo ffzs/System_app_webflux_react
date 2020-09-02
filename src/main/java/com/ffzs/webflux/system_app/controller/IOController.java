@@ -1,26 +1,25 @@
 package com.ffzs.webflux.system_app.controller;
 
+import com.ffzs.webflux.system_app.model.SysApi;
+import com.ffzs.webflux.system_app.model.SysRole;
 import com.ffzs.webflux.system_app.model.SysUser;
+import com.ffzs.webflux.system_app.service.IOService;
+import com.ffzs.webflux.system_app.service.SysApiService;
+import com.ffzs.webflux.system_app.service.SysRoleService;
 import com.ffzs.webflux.system_app.service.SysUserService;
-import com.ffzs.webflux.system_app.utils.ReadExcelUtil;
-import com.ffzs.webflux.system_app.utils.WriteExcelUtil;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.io.*;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.List;
+import java.io.UnsupportedEncodingException;
+
 
 /**
  * @author: ffzs
@@ -34,61 +33,83 @@ import java.util.List;
 public class IOController {
 
     private final SysUserService sysUserService;
+    private final IOService ioService;
+    private final SysApiService sysApiService;
+    private final SysRoleService sysRoleService;
 
-    @PostMapping(value = "/upload/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload/user/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    public Flux<SysUser> upload(@RequestPart("file") Flux<FilePart> filePart){
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public Flux<SysUser> uploadUser(@RequestPart("file") Flux<FilePart> filePart){
 
-        return filePart
-                .flatMap(part -> {
-                    try {
-                        Path filePath = Files.createTempFile("",".xlsx");
-                        part.transferTo(filePath);
-                        File file = new File(filePath.toString());
-                        InputStream in = new FileInputStream(file);
-                        List<Object> user = ReadExcelUtil.readExcel(in, file.getPath(), 0, SysUser.class);
-                        if (user != null) return Mono.justOrEmpty(user);
-                        in.close();
-                    } catch (IOException e) {
-                        log.error(e.getMessage());
-                    }
-                    return Mono.empty();
-                })
-                .flatMap(it -> Flux
-                        .fromIterable(it)
-                        .cast(SysUser.class)
-                );
+        return ioService.upload(filePart, SysUser.class)
+                .cast(SysUser.class);
+    }
+
+    @PostMapping(value = "/upload/url/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(value = HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public Flux<SysApi> uploadUrl(@RequestPart("file") Flux<FilePart> filePart){
+
+        return ioService.upload(filePart, SysApi.class)
+                .cast(SysApi.class);
+    }
+
+    @PostMapping(value = "/upload/role/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(value = HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public Flux<SysRole> uploadRole(@RequestPart("file") Flux<FilePart> filePart){
+
+        return ioService.upload(filePart, SysRole.class)
+                .cast(SysRole.class);
     }
 
 
-    @PostMapping("/download/excel/db")
-    public Mono<Void> downloadFromDb(ServerHttpResponse response) throws UnsupportedEncodingException {
-        String fileName = new String(("test-" + LocalDateTime.now().toLocalDate() + ".xlsx").getBytes(StandardCharsets.UTF_8),"iso8859-1");
-        File file = new File(fileName);
+    @PostMapping("/download/user/excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT', 'HR')")
+    public Mono<Void> downloadUser(ServerHttpResponse response) {
+
         return sysUserService.findAll()
                 .collectList()
-                .flatMap(list -> WriteExcelUtil.data2Workbook(list, SysUser.class))
-                .flatMap(workbook-> {
+                .flatMap(objs-> {
                     try {
-                        workbook.write(new FileOutputStream(file));
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        return ioService.downloadFromDb(objs, response, SysUser.class);
+                    } catch (UnsupportedEncodingException e) {
+                        return Mono.error(new UnsupportedEncodingException());
                     }
-                    return downloadFile(response, file, fileName);
                 });
     }
 
 
-    private Mono<Void> downloadFile(ServerHttpResponse response, File file, String fileName) {
-        ZeroCopyHttpOutputMessage zeroCopyHttpOutputMessage = (ZeroCopyHttpOutputMessage) response;
-        try {
-            response.getHeaders()
-                    .set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=".concat(
-                            URLEncoder.encode(fileName, StandardCharsets.UTF_8.displayName())));
-            return zeroCopyHttpOutputMessage.writeWith(file, 0, file.length());
-        } catch (UnsupportedEncodingException e) {
-            throw new UnsupportedOperationException();
-        }
+    @PostMapping("/download/role/excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT', 'HR')")
+    public Mono<Void> downloadRole(ServerHttpResponse response) {
+
+        return sysRoleService.findAll()
+                .collectList()
+                .flatMap(objs-> {
+                    try {
+                        return ioService.downloadFromDb(objs, response, SysRole.class);
+                    } catch (UnsupportedEncodingException e) {
+                        return Mono.error(new UnsupportedEncodingException());
+                    }
+                });
+    }
+
+
+    @PostMapping("/download/url/excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'IT', 'HR')")
+    public Mono<Void> downloadUrl(ServerHttpResponse response) {
+
+        return sysApiService.findAll()
+                .collectList()
+                .flatMap(objs-> {
+                    try {
+                        return ioService.downloadFromDb(objs, response, SysApi.class);
+                    } catch (UnsupportedEncodingException e) {
+                        return Mono.error(new UnsupportedEncodingException());
+                    }
+                });
     }
 
 }

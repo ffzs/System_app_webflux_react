@@ -24,6 +24,7 @@ public class RedisService {
     }
 
     public Mono<Long> deleteToken (String token) {
+
         return redisTemplate.opsForSet().remove("token_set", token);
     }
 }

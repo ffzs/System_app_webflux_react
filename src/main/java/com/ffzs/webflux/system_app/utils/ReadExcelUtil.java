@@ -57,7 +57,7 @@ public class ReadExcelUtil {
 
     }
 
-    public static List<Object> readExcel (InputStream inputStream, String fileName, int sheetId, Class<?> clazz) {
+    public static List<Object> readExcel (InputStream inputStream, String fileName, int sheetId, Class<?> clazz) throws IOException {
 
         Workbook workbook = null;
 
@@ -112,7 +112,7 @@ public class ReadExcelUtil {
         for (int i = 0; i < properties.length; i++) {
             properties[i] = header.getCell(i).toString();
         }
-        log.info("{}:{}", columnNum, properties);
+//        log.info("{}:{}", columnNum, properties);
 
         int startRowNum = 1;
         int endRowNum = sheet.getPhysicalNumberOfRows();
@@ -138,11 +138,13 @@ public class ReadExcelUtil {
                         Method method = methods.get(methodName);
                         Cell cell = row.getCell(j);
                         Type type = fieldMap.get(properties[j]);
+//                        log.error("{}; {}",cell, type);
                         method.invoke(obj,cell2Obj(cell, type));
                     }
                 }
             } catch (Exception e) {
                 log.error("{}文件的第{}行解析出现错误，错误类型为{}，错误内容{}", fileName, i, e.getClass(), e.getMessage());
+//                throw e;
             }
             objs.add(obj);
         }
@@ -154,30 +156,29 @@ public class ReadExcelUtil {
         Object value = null;
         switch (cell.getCellType()) {
             case NUMERIC:
-                if (type.getTypeName().equals("long")) value = Long.valueOf(cell.getStringCellValue());
-                else {
-                    Double doubleValue = cell.getNumericCellValue();
-                    DecimalFormat df = new DecimalFormat("0");
-                    value = df.format(doubleValue);
-                }
+                Double doubleValue = cell.getNumericCellValue();
+                DecimalFormat decimalFormat = new DecimalFormat("0");
+                value = decimalFormat.format(doubleValue);
+                if (type.getTypeName().equals("long")) value = Long.valueOf((String) value);
                 break;
             case STRING:
-                if (cell.getStringCellValue().equals("")) break;
+                String str = cell.getStringCellValue().trim();
+                if (str.equals("")) break;
                 switch (type.getTypeName()) {
                     case "long":
-                        value = Long.valueOf(cell.getStringCellValue());
+                        value = Long.valueOf(str);
                         break;
                     case "java.time.LocalDateTime":
-                        String date = cell.getStringCellValue().trim();
-                        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                        value = LocalDateTime.parse(date, df);
+                        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        value = LocalDateTime.parse(str, dateTimeFormatter);
                         break;
                     case "java.util.List":
-                        String data = cell.getStringCellValue();
-                        value = Arrays.asList(data.substring(1, data.length() - 1).split(","));
+                        value = Arrays.stream(str.substring(1, str.length() - 1).split(","))
+                                .map(String::trim)
+                                .collect(Collectors.toList());
                         break;
                     default:
-                        value = cell.getStringCellValue();
+                        value = str;
                         break;
                 }
                 break;
@@ -186,6 +187,10 @@ public class ReadExcelUtil {
                 break;
             case FORMULA:
                 value = cell.getCellFormula();
+                break;
+            case BLANK:
+            case _NONE:
+                if (type.getTypeName().equals("java.util.List")) value = new ArrayList<>();
                 break;
             default:
                 break;

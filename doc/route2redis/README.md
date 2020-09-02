@@ -1,40 +1,76 @@
-package com.ffzs.webflux.system_app.handler;
+# Spring WebFlux + React搭建后台管理系统（10）:配合Redis进行鉴权
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ffzs.webflux.system_app.model.SysHttpResponse;
-import com.ffzs.webflux.system_app.service.JwtSigner;
-import io.jsonwebtoken.Claims;
-import lombok.AllArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+如果是网关等服务，可以将路由及每个路由的权限缓存到redis数据库中，用户访问，在网关进行鉴权：
 
-import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
++ token比对redis缓存的token，不存在返回
++ token进行jwt解析，获取roles
++ 通过api的path和访问模式在redis数据库中获取该接口通行的roles
++ token中的roles和api对应的roles有相交说明有权限，否则返回
++ roles同时通过`ReactiveSecurityContextHolder`进行设置
 
+
+
+## 1. 启动时api信息写入redis
+
++ 通过`PostConstruct`在启动时将数据库中的数据转存到redis中
++ key通过`api_path_method`的方式存储：`String key = "api_" + api.getUrl().trim() + "_" + api.getRemark();`
+
+```java
+/**
+ * @author: ffzs
+ * @Date: 2020/9/1 下午12:52
+ */
+
+@Component
+@AllArgsConstructor
+@Slf4j
+@Order(1)
+public class prepareRedisData {
+
+    private final ReactiveRedisTemplate<String, String> redisTemplate;
+    private final SysApiService sysApiService;
+
+    @PostConstruct
+    public void route2Redis() {
+
+        sysApiService.findAll()
+                .flatMap(api -> {
+                    String key = "api_" + api.getUrl().trim() + "_" + api.getRemark();
+                    redisTemplate.delete(key);
+                    if (!api.getRoles().isEmpty())
+                        return redisTemplate.opsForSet()
+                                .add(key, api.getRoles().toArray(new String[0]));
+                    else return Mono.empty();
+                })
+                .subscribe();
+
+        log.info("routes import to redis completed");
+    }
+}
+```
+
+## 2.修改WebFilter进行鉴权
+
++ 检查token是否存在
+
+![image-20200902144230785](README.assets/image-20200902144230785.png)
+
++ 检查token是否符合要求
++ 获取redis中的roles进行比对如果用户roles在redis中的数量大于等于1符合要求
+
+![image-20200902144325910](README.assets/image-20200902144325910.png)
+
++ 根据token获得`Authentication`
+
+![image-20200902144502242](README.assets/image-20200902144502242.png)
+
++ `Authentication`写入`ReactiveSecurityContextHolder`
+
+![image-20200902144544578](README.assets/image-20200902144544578.png)
+
+### 2.1 完整代码如下
+
+```java
 /**
  * @author: ffzs
  * @Date: 2020/8/17 下午12:53
@@ -121,8 +157,8 @@ public class JwtWebFilter implements WebFilter {
                 .flatMap(isMember -> {
                     if (isMember) {
                         try {
+//                            exchange.getAttributes().put("token", token);
                             return checkToken(token, key)
-//                                    .doOnNext(info->log.info("{}", info))
                                     .flatMap(authentication -> {
                                         if (authentication.getPrincipal() != null) {
                                             return chain.filter(exchange)
@@ -140,3 +176,30 @@ public class JwtWebFilter implements WebFilter {
                 });
     }
 }
+```
+
+## 3.取消AuthenticationManager使用
+
+这时就可以不再使用AuthenticationManager和ServerSecurityContextRepository。
+
+取消`@Component`不再注入
+
+![image-20200902144814837](README.assets/image-20200902144814837.png)
+
+
+
++ 同时取消`ReactiveUserDetailsService`使用
+
+![image-20200902144859400](README.assets/image-20200902144859400.png)
+
+## 4.测试
+
++ 通过没有权限的用户进行访问结果如下
+
+![image-20200902145014044](README.assets/image-20200902145014044.png)
+
+## 5. 源码
+
+| github | [前端（antd pro）](https://github.com/ffzs/System_app_antdpro_fore-end) | [后端（spring webflux）](https://github.com/ffzs/System_app_webflux_react) |
+| ------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| gitee  | [前端（antd pro）](https://gitee.com/ffzs/System_app_antdpro_fore-end) | [后端（spring webflux）](https://gitee.com/ffzs/System_app_webflux_react) |

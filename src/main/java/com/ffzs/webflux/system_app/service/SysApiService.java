@@ -51,34 +51,84 @@ public class SysApiService {
                 .flatMap(this::addRoles);
     }
 
+//    private Mono<SysApi> saveRoles (SysApi api) {
+//        List<String> roles = api.getRoles();
+//        if (roles==null || roles.isEmpty()) return Mono.just(api);
+//        return Flux.fromIterable(roles)
+//                .flatMap(role -> sysRoleRepository.findByName(role)
+//                        .map(SysRole::getId))
+//                .flatMap(roleId -> sysRoleApiRepository
+//                        .findByRoleIdAndApiId(roleId, api.getId())
+//                        .switchIfEmpty(mark
+//                                .createObj(new SysRoleApi(roleId, api.getId()))
+//                                .flatMap(sysRoleApiRepository::save)
+//                        )
+//                )
+//                .map(SysRoleApi::getApiId)
+//                .collectList()
+//                .then(Mono.just(api));
+//    }
+
+    private Mono<Long> checkRole (String role) {
+        return sysRoleRepository.findByName(role)
+                .switchIfEmpty(
+                        mark.createObj(new SysRole(role))
+                                .flatMap(sysRoleRepository::save)
+                                .map(SysRole::getName)
+                                .flatMap(sysRoleRepository::findByName)
+                )
+                .map(SysRole::getId);
+    }
+
+    private Mono<Void> checkApiRole (List<Long> roleIds, Long apiId) {
+
+        return sysRoleApiRepository
+                .findByApiId(apiId)
+                .map(SysRoleApi::getRoleId)
+                .collectList()
+                .flatMap(oldRoleIds -> Flux.fromIterable(roleIds)
+                        .filter(roleId->!oldRoleIds.contains(roleId))
+                        .flatMap(roleId -> mark.createObj(new SysRoleApi(roleId, apiId)))
+                        .cast(SysRoleApi.class)
+                        .flatMap(sysRoleApiRepository::save)
+                        .collectList()
+                        .flatMap(it -> Flux
+                                .fromIterable(oldRoleIds)
+                                .filter(oldRoleId -> !roleIds.contains(oldRoleId))
+                                .flatMap(oldRoleId -> sysRoleApiRepository
+                                        .deleteByApiIdAndRoleId(apiId, oldRoleId)
+                                )
+                                .collectList()
+                        )
+                        .then(Mono.empty())
+                );
+    }
+
     private Mono<SysApi> saveRoles (SysApi api) {
+
         List<String> roles = api.getRoles();
         if (roles==null || roles.isEmpty()) return Mono.just(api);
-        return Flux.fromIterable(roles)
-                .flatMap(role -> sysRoleRepository.findByName(role)
-                        .map(SysRole::getId))
-                .flatMap(roleId -> sysRoleApiRepository
-                        .findByRoleIdAndApiId(roleId, api.getId())
-                        .switchIfEmpty(mark
-                                .createObj(new SysRoleApi(roleId, api.getId()))
-                                .flatMap(sysRoleApiRepository::save)
-                        )
-                )
-                .map(SysRoleApi::getApiId)
-                .collectList()
+        return Mono.from(
+                Flux.fromIterable(roles)
+                        .flatMap(this::checkRole)
+                        .collectList()
+        )
+                .flatMap(roleIds-> this.checkApiRole(roleIds, api.getId()))
                 .then(Mono.just(api));
     }
 
+
     public Mono<SysApi> save (SysApi api) {
-        Mono<SysApi> monoApi;
+        log.info("{}", api);
         if (api.getId() == 0) {
-            monoApi = mark.createObj(api)
+            return mark.createObj(api)
                     .flatMap(sysApiRepository::save)
                     .map(SysApi::getName)
                     .flatMap(sysApiRepository::findByName)
-                    .map(it -> it.withRoles(api.getRoles()));
+                    .map(it -> it.withRoles(api.getRoles()))
+                    .flatMap(this::saveRoles);
         }
-        else monoApi =  mark
+        else return mark
                 .updateObj(api)
                 .flatMap(it -> sysApiRepository
                         .findByName(api.getName())
@@ -86,12 +136,12 @@ public class SysApiService {
                                 .withCreateBy(oldApi.getCreateBy())
                                 .withCreateTime(oldApi.getCreateTime())
                         ))
-                .flatMap(sysApiRepository::save);
-
-        return monoApi.flatMap(this::saveRoles);
+                .flatMap(sysApiRepository::save)
+                .flatMap(this::saveRoles);
     }
 
     public Mono<Void> delete (Long id) {
-        return sysApiRepository.deleteById(id);
+        return sysApiRepository.deleteById(id)
+                .flatMap(it->sysRoleApiRepository.deleteByApiId(id));
     }
 }

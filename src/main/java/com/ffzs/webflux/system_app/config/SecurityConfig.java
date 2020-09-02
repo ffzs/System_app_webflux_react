@@ -22,7 +22,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @AllArgsConstructor
 public class SecurityConfig {
 
-    private final SecurityContextRepository securityRepository;
+//    private final SecurityContextRepository securityRepository;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(
@@ -34,14 +34,13 @@ public class SecurityConfig {
                 .authorizeExchange()
                 .pathMatchers("/api/auth/**").permitAll()
                 .pathMatchers(HttpMethod.OPTIONS).permitAll()
-//                .pathMatchers("/api/user/**").hasAnyRole("ADMIN", "HR")
                 .pathMatchers("/api/user/**").permitAll()
                 .anyExchange().authenticated()
                 .and()
                 .addFilterAfter(jwtWebFilter, SecurityWebFiltersOrder.FIRST)  // 这里注意执行位置一定要在securityContextRepository
-                .securityContextRepository(securityRepository)
+//                .securityContextRepository(securityRepository)
                 .formLogin().disable()
-            .httpBasic().disable()
+                .httpBasic().disable()
                 .csrf().disable()
                 .logout().disable()
                 .build();

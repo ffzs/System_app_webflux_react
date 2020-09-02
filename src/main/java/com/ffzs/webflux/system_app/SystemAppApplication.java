@@ -1,20 +1,13 @@
 package com.ffzs.webflux.system_app;
 
-import com.ffzs.webflux.system_app.model.SysUser;
-import com.ffzs.webflux.system_app.utils.ReadExcelUtil;
-import com.ffzs.webflux.system_app.utils.WriteExcelUtil;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import java.util.List;
-
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration;
 
 
-@SpringBootApplication
-@Slf4j
-@AllArgsConstructor
+
+@SpringBootApplication(exclude = {ReactiveUserDetailsServiceAutoConfiguration.class}) // 使用jwt，不再使用UserDetails
 public class SystemAppApplication {
 
     public static void main(String[] args) {
@@ -26,3 +19,5 @@ public class SystemAppApplication {
         SpringApplication.run(SystemAppApplication.class, args);
     }
 }
+
+

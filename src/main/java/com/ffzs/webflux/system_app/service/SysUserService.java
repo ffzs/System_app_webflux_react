@@ -50,6 +50,7 @@ public class SysUserService {
 
     public Flux<SysUser> findAll () {
         return sysUserRepository.findAll()
+                .map(it->it.withPassword(null))
                 .flatMap(this::addRoles);
     }
 
@@ -58,48 +59,76 @@ public class SysUserService {
                 .flatMap(this::addRoles);
     }
 
+    private Mono<Long> checkRole (String role) {
+        return sysRoleRepository.findByName(role)
+                .switchIfEmpty(
+                        mark.createObj(new SysRole(role))
+                                .flatMap(sysRoleRepository::save)
+                                .map(SysRole::getName)
+                                .flatMap(sysRoleRepository::findByName)
+                )
+                .map(SysRole::getId);
+    }
+
+
+    private Mono<Void> checkUserRole (List<Long> roleIds, Long userId) {
+
+        return sysUserRoleRepository
+                .findByUserId(userId)
+                .map(SysUserRole::getRoleId)
+                .collectList()
+                .flatMap(oldRoleIds -> Flux.fromIterable(roleIds)
+                        .filter(roleId->!oldRoleIds.contains(roleId))
+                        .flatMap(roleId -> mark.createObj(new SysUserRole(userId, roleId)))
+                        .cast(SysUserRole.class)
+                        .flatMap(sysUserRoleRepository::save)
+                        .collectList()
+                        .flatMap(it -> Flux
+                                .fromIterable(oldRoleIds)
+                                .filter(oldRoleId -> !roleIds.contains(oldRoleId))
+                                .flatMap(oldRoleId -> sysUserRoleRepository
+                                        .deleteByUserIdAndRoleId(userId, oldRoleId)
+                                )
+                                .collectList()
+                        )
+                        .then(Mono.empty())
+                );
+    }
 
     private Mono<SysUser> saveRoles (SysUser user) {
+
         List<String> roles = user.getRoles();
         if (roles==null || roles.isEmpty()) return Mono.just(user);
-        return Flux.fromIterable(roles)
-                .flatMap(role -> sysRoleRepository.findByName(role)
-                        .switchIfEmpty(
-                                mark.createObj(new SysRole(role))
-                                        .flatMap(sysRoleRepository::save)
-                                        .map(SysRole::getName)
-                                        .flatMap(sysRoleRepository::findByName)
-                        )
-                        .map(SysRole::getId)
+        return Mono.from(
+                Flux.fromIterable(roles)
+                        .flatMap(this::checkRole)
+                        .collectList()
                 )
-                .flatMap(roleId -> sysUserRoleRepository
-                        .findByUserIdAndRoleId(user.getId(), roleId)
-                        .switchIfEmpty(mark.createObj(new SysUserRole(user.getId(), roleId))
-                                .cast(SysUserRole.class)
-                                .flatMap(sysUserRoleRepository::save)
-                        )
-                        .map(SysUserRole::getId))
-                .collectList()
+                .flatMap(roleIds-> this.checkUserRole(roleIds, user.getId()))
                 .then(Mono.just(user));
     }
 
 
     public Mono<SysUser> save (SysUser user) {
-        user.setPassword(password.encode(user.getPassword()));
-
         if (user.getId() != 0) {  // id不为0为更新update
             return mark.updateObj(user)
                     .flatMap(it -> sysUserRepository
                             .findByUsername(user.getUsername())
-                            .map(oldUser -> it
+                            .map(oldUser -> {
+                                if (it.getPassword() == null || it.getPassword().equals(""))
+                                    it.setPassword(oldUser.getPassword());
+                                else it.setPassword(password.encode(user.getPassword()));
+                                return it
                                     .withCreateBy(oldUser.getCreateBy())
-                                    .withCreateTime(oldUser.getCreateTime())
+                                    .withCreateTime(oldUser.getCreateTime());}
                             ))
                     .flatMap(sysUserRepository::save)
                     .flatMap(this::saveRoles);
         }
         else {   // id为0为create
+
             return mark.createObj(user)
+                    .map(it->it.withPassword(password.encode(user.getPassword())))
                     .flatMap(sysUserRepository::save)
                     .map(SysUser::getUsername)
                     .flatMap(sysUserRepository::findByUsername)

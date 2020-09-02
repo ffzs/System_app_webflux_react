@@ -30,11 +30,12 @@ public class UserDataFaker {
     private final String[] roles = { "it", "op", "hr", "user", "pm"};
 
     private SysUser fakeUser (String avatar) {
+        String name = f.name().fullName();
         return SysUser.builder()
                 .avatar(avatar)
-                .username(f.name().fullName())
+                .username(name)
                 .password("123zxc")
-                .email(f.internet().emailAddress())
+                .email(f.internet().safeEmailAddress(name))
                 .mobile(f.phoneNumber().cellPhone())
                 .frozen(f.random().nextInt(1,10) < 9? 0:1)
                 .roles(List.of("ROLE_" + roles[f.random().nextInt(0,roles.length-1)].toUpperCase()))
@@ -44,17 +45,18 @@ public class UserDataFaker {
 
     public Flux<SysUser> fakeUserData (Long count) throws IOException {
 
-        return Flux.fromStream(Files.lines(Paths.get("avatar.txt")))
-                .take(count)
+        return Flux.fromStream(Files.lines(Paths.get("avatar.txt")).limit(count))
+                .onErrorContinue((e, i) -> log.error("{} {}", i, e.getMessage()))
                 .map(this::fakeUser)
                 .flatMap(user -> sysUserRepository
                         .existsByUsername(user.getUsername())
                         .filter(it->it)
                         .then(Mono.just(user)))
                 .flatMap(sysUserService::save)
-                .onErrorResume(e -> {
-                            log.error("{}, {}", e.getClass(), e.getMessage());
-                            return Mono.empty();
-                });
+//                .onErrorResume(e -> {
+//                            log.error("{}, {}", e.getClass(), e.getMessage());
+//                            return Mono.empty();
+//                })
+                ;
     }
 }
