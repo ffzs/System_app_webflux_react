@@ -9,12 +9,16 @@ spring:
     port: 6379
     password: 123zxc
     timeout: 5000
-
   data:
     redis:
       repositories:
         enabled: false
-
+  main:
+    lazy-initialization: true
+  rsocket:
+    server:
+      transport: websocket
+      port: 8081
 jwt:
   expiration:
     duration: 3600

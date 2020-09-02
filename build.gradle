@@ -19,12 +19,10 @@ repositories {
 }
 
 dependencies {
-//    compile files('libs/poi-ooxml-4.1.2.jar')
-//    compile files('libs/poi-4.1.2.jar')
-//    compile fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-rsocket'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation 'io.jsonwebtoken:jjwt:0.9.1'
     implementation 'org.apache.poi:poi:4.0.1'
