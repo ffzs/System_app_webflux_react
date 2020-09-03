@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Weather {
-
+    Long id;
     LocalDateTime date;
     Long direction;
     Long speed;

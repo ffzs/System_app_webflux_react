@@ -14,11 +14,13 @@ libs
 .springBeans
 .sts4-cache
 
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
+Data
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
