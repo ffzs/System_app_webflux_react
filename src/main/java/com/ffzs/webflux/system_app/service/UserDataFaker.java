@@ -52,11 +52,6 @@ public class UserDataFaker {
                         .existsByUsername(user.getUsername())
                         .filter(it->it)
                         .then(Mono.just(user)))
-                .flatMap(sysUserService::save)
-//                .onErrorResume(e -> {
-//                            log.error("{}, {}", e.getClass(), e.getMessage());
-//                            return Mono.empty();
-//                })
-                ;
+                .flatMap(sysUserService::save);
     }
 }

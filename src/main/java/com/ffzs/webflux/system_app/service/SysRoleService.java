@@ -2,11 +2,16 @@ package com.ffzs.webflux.system_app.service;
 
 import com.ffzs.webflux.system_app.model.SysRole;
 import com.ffzs.webflux.system_app.repository.SysRoleRepository;
+import com.ffzs.webflux.system_app.utils.ReadExcelUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import javax.annotation.PostConstruct;
+import java.util.List;
 
 /**
  * @author: ffzs
@@ -16,10 +21,12 @@ import reactor.core.publisher.Mono;
 @Service
 @AllArgsConstructor
 @Slf4j
+@Order(1)
 public class SysRoleService {
 
     private final SysRoleRepository sysRoleRepository;
     private final MarkDataService mark;
+
 
     public Mono<SysRole> findByName (String name) {
         return sysRoleRepository.findByName(name);

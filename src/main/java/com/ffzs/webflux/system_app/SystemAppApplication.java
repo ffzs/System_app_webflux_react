@@ -12,10 +12,6 @@ public class SystemAppApplication {
 
     public static void main(String[] args) {
 
-//        List<Object> list = ReadExcelUtil.readExcel("test-2020-08-311.xlsx", 0, SysUser.class);
-//        log.info("{}", list.get(0));
-//        WriteExcelUtil.writeExcel("xxx.xlsx", list, SysUser.class);
-
         SpringApplication.run(SystemAppApplication.class, args);
     }
 }

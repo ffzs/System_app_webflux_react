@@ -6,14 +6,17 @@ import com.ffzs.webflux.system_app.model.SysUserRole;
 import com.ffzs.webflux.system_app.repository.SysRoleRepository;
 import com.ffzs.webflux.system_app.repository.SysUserRepository;
 import com.ffzs.webflux.system_app.repository.SysUserRoleRepository;
+import com.ffzs.webflux.system_app.utils.ReadExcelUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 
 /**
@@ -24,10 +27,10 @@ import java.util.List;
 @Service
 @AllArgsConstructor
 @Slf4j
+@Order(2)
 public class SysUserService {
 
     private final PasswordEncoder password = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-
     private final SysUserRepository sysUserRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
     private final SysRoleRepository sysRoleRepository;
@@ -109,33 +112,47 @@ public class SysUserService {
     }
 
 
-    public Mono<SysUser> save (SysUser user) {
-        if (user.getId() != 0) {  // id不为0为更新update
-            return mark.updateObj(user)
-                    .flatMap(it -> sysUserRepository
-                            .findByUsername(user.getUsername())
-                            .map(oldUser -> {
-                                if (it.getPassword() == null || it.getPassword().equals(""))
-                                    it.setPassword(oldUser.getPassword());
-                                else it.setPassword(password.encode(user.getPassword()));
-                                return it
+    public Mono<SysUser> insert (SysUser user) {
+
+        return Mono.just(user)
+                .map(it->it.withPassword(password.encode(user.getPassword())))
+                .flatMap(sysUserRepository::save)
+                .map(SysUser::getUsername)
+                .flatMap(sysUserRepository::findByUsername)
+                .map(it -> it.withRoles(user.getRoles()))
+                .flatMap(this::saveRoles);
+    }
+
+
+    public Mono<SysUser> update (SysUser user) {
+
+        return Mono.just(user)
+                .flatMap(it -> sysUserRepository
+                        .findByUsername(user.getUsername())
+                        .map(oldUser -> {
+                            if (it.getPassword() == null || it.getPassword().equals(""))
+                                it.setPassword(oldUser.getPassword());
+                            else it.setPassword(password.encode(user.getPassword()));
+                            return it
                                     .withCreateBy(oldUser.getCreateBy())
                                     .withCreateTime(oldUser.getCreateTime());}
-                            ))
-                    .flatMap(sysUserRepository::save)
-                    .flatMap(this::saveRoles);
+                        ))
+                .flatMap(sysUserRepository::save)
+                .flatMap(this::saveRoles);
+    }
+
+
+    public Mono<SysUser> save (SysUser user) {
+        if (user.getId() != 0) {  //
+            return mark.updateObj(user)
+                    .flatMap(this::insert);
         }
         else {   // id为0为create
-
             return mark.createObj(user)
-                    .map(it->it.withPassword(password.encode(user.getPassword())))
-                    .flatMap(sysUserRepository::save)
-                    .map(SysUser::getUsername)
-                    .flatMap(sysUserRepository::findByUsername)
-                    .map(it -> it.withRoles(user.getRoles()))
-                    .flatMap(this::saveRoles);
+                    .flatMap(this::update);
         }
     }
+
 
 
     public Mono<Void> deleteById (Long id) {

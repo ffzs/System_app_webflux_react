@@ -4,6 +4,7 @@ import com.ffzs.webflux.system_app.repository.DataChange;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.With;
 import org.springframework.data.annotation.*;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -12,6 +13,7 @@ import org.springframework.data.relational.core.mapping.Table;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@With
 public class SysRole implements DataChange {
 
     @Id

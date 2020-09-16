@@ -51,23 +51,6 @@ public class SysApiService {
                 .flatMap(this::addRoles);
     }
 
-//    private Mono<SysApi> saveRoles (SysApi api) {
-//        List<String> roles = api.getRoles();
-//        if (roles==null || roles.isEmpty()) return Mono.just(api);
-//        return Flux.fromIterable(roles)
-//                .flatMap(role -> sysRoleRepository.findByName(role)
-//                        .map(SysRole::getId))
-//                .flatMap(roleId -> sysRoleApiRepository
-//                        .findByRoleIdAndApiId(roleId, api.getId())
-//                        .switchIfEmpty(mark
-//                                .createObj(new SysRoleApi(roleId, api.getId()))
-//                                .flatMap(sysRoleApiRepository::save)
-//                        )
-//                )
-//                .map(SysRoleApi::getApiId)
-//                .collectList()
-//                .then(Mono.just(api));
-//    }
 
     private Mono<Long> checkRole (String role) {
         return sysRoleRepository.findByName(role)
@@ -119,7 +102,6 @@ public class SysApiService {
 
 
     public Mono<SysApi> save (SysApi api) {
-        log.info("{}", api);
         if (api.getId() == 0) {
             return mark.createObj(api)
                     .flatMap(sysApiRepository::save)

@@ -18,13 +18,13 @@ import javax.annotation.PostConstruct;
 @Component
 @AllArgsConstructor
 @Slf4j
-@Order(1)
 public class prepareRedisData {
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final SysApiService sysApiService;
 
     @PostConstruct
+    @Order(2)
     public void route2Redis() {
 
         sysApiService.findAll()
@@ -38,7 +38,7 @@ public class prepareRedisData {
                 })
                 .subscribe();
 
-        log.info("routes import to redis completed");
+        log.info("api信息缓存到redis数据库完成。。");
     }
 }
 

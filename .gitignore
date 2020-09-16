@@ -20,7 +20,6 @@ libs
 *.iws
 *.iml
 *.ipr
-Data
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
