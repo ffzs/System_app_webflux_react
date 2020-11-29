@@ -9,6 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -39,4 +40,23 @@ public class SysApi implements DataChange {
     @Transient   // 不存在与数据库中的字段
     private List<String> roles;
 
+    @Override
+    public void setCreateBy(String createBy) {
+
+    }
+
+    @Override
+    public void setCreateTime(LocalDateTime createTime) {
+
+    }
+
+    @Override
+    public void setLastUpdateBy(String lastUpdateBy) {
+
+    }
+
+    @Override
+    public void setLastUpdateTime(LocalDateTime lastUpdateTime) {
+
+    }
 }

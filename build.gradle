@@ -15,6 +15,9 @@ configurations {
 }
 
 repositories {
+    mavenLocal()
+    maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+    maven { url 'https://repo.spring.io/milestone' }
     mavenCentral()
 }
 
@@ -40,8 +43,8 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
 }
 
-test {
-    useJUnitPlatform()
-}
+//test {
+//    useJUnitPlatform()
+//}
 
 jar{}

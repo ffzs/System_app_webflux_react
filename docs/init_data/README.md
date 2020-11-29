@@ -78,20 +78,46 @@ Thread.sleep(2000);
 + 通过配置文件给一个参数进行判断，但是项目都写到docker中了，更改配置需要使用刷新配置，config等配置，比较麻烦
 + 可以通过判断数据库中是否存在某个表，是否有用户，就知道是否初始化过了
 
-我是通过判断user表中是否存在admin用户，因为我这user表中一定会有这个admin用户，没有就是没有初始化
+我是通过判断数据库是否存在
 
 ```java
-sysUserService.findByUsername("admin")
-        .switchIfEmpty(
-                client.execute(sqlScript)
+        Boolean hasDatabase = client.execute("SHOW DATABASES")
                 .fetch()
-                .rowsUpdated()
-                .then(initRole())
-                .then(initUser())
-                .then(initApi())
-                .then(Mono.empty())
-        )
-        .block();
+                .all()
+                .map(it -> it.get("Database"))
+                .collectList()
+                .map(it->it.contains(mysqlDatabase))
+                .block();
+```
+
+然后判断table是否存在
+
+```java
+Boolean hasTable = null;
+if (hasDatabase != null && hasDatabase) {
+    hasTable = client.execute("USE " + mysqlDatabase + "; show tables like 'sys_user'")
+            .fetch()
+            .all()
+            .collectList()
+            .map(it -> it.size()>0)
+            .block();
+}
+```
+
+再判断user表中是否存在admin用户，因为我这user表中一定会有这个admin用户，没有就是没有初始化
+
+```java
+            client.execute(sqlScript)
+                    .fetch()
+                    .rowsUpdated()
+                    .then(sysUserService.findByUsername("admin"))
+                    .switchIfEmpty(
+                            initRole()
+                                    .then(initUser())
+                                    .then(initApi())
+                                    .then(Mono.empty())
+                    )
+                    .block();
 ```
 
 完整代码：
@@ -110,6 +136,11 @@ public class Create_Database {
 
     @Value("${my.filesPath.sqlScript}")
     private String sqlScriptPath;
+    @Value("${my.mysql.host}")
+    private String mysqlHost;
+
+    @Value("${my.mysql.database}")
+    private String mysqlDatabase;
 
     private final SysUserService sysUserService;
     private final SysRoleService sysRoleService;
@@ -122,26 +153,47 @@ public class Create_Database {
                         .option(USER, "root")
                         .option(DRIVER, "mysql")
                         .option(PASSWORD, "123zxc")
-                        .option(HOST, "localhost")
+                        .option(HOST, mysqlHost)
                         .option(PORT, 3306)
                         .build())
         );
 
-        String sqlScript = Files.readString(Path.of(sqlScriptPath));
-        sysUserService.findByUsername("admin")
-                .switchIfEmpty(
-                        client.execute(sqlScript)
-                        .fetch()
-                        .rowsUpdated()
-                        .then(initRole())
-                        .then(initUser())
-                        .then(initApi())
-                        .then(Mono.empty())
-                )
+        Boolean hasDatabase = client.execute("SHOW DATABASES")
+                .fetch()
+                .all()
+                .map(it -> it.get("Database"))
+                .collectList()
+                .map(it->it.contains(mysqlDatabase))
                 .block();
 
-        Thread.sleep(2000);
-        log.info("数据库以及数据初始化完成。。");
+        Boolean hasTable = null;
+        if (hasDatabase != null && hasDatabase) {
+            hasTable = client.execute("USE " + mysqlDatabase + "; show tables like 'sys_user'")
+                    .fetch()
+                    .all()
+                    .collectList()
+                    .map(it -> it.size()>0)
+                    .block();
+        }
+
+        if (!(hasDatabase != null && hasTable !=null && hasTable)) {
+            String sqlScript = Files.readString(Path.of(sqlScriptPath));
+
+            client.execute(sqlScript)
+                    .fetch()
+                    .rowsUpdated()
+                    .then(sysUserService.findByUsername("admin"))
+                    .switchIfEmpty(
+                            initRole()
+                                    .then(initUser())
+                                    .then(initApi())
+                                    .then(Mono.empty())
+                    )
+                    .block();
+
+            Thread.sleep(2000);
+            log.info("数据库以及数据初始化完成。。");
+        }
     }
 
     private Mono<List<SysRole>> initRole () {

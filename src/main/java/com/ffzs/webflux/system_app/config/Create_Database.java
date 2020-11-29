@@ -39,6 +39,11 @@ public class Create_Database {
 
     @Value("${my.filesPath.sqlScript}")
     private String sqlScriptPath;
+    @Value("${my.mysql.host}")
+    private String mysqlHost;
+
+    @Value("${my.mysql.database}")
+    private String mysqlDatabase;
 
     private final SysUserService sysUserService;
     private final SysRoleService sysRoleService;
@@ -51,26 +56,47 @@ public class Create_Database {
                         .option(USER, "root")
                         .option(DRIVER, "mysql")
                         .option(PASSWORD, "123zxc")
-                        .option(HOST, "localhost")
+                        .option(HOST, mysqlHost)
                         .option(PORT, 3306)
                         .build())
         );
 
-        String sqlScript = Files.readString(Path.of(sqlScriptPath));
-        sysUserService.findByUsername("admin")
-                .switchIfEmpty(
-                        client.execute(sqlScript)
-                        .fetch()
-                        .rowsUpdated()
-                        .then(initRole())
-                        .then(initUser())
-                        .then(initApi())
-                        .then(Mono.empty())
-                )
+        Boolean hasDatabase = client.execute("SHOW DATABASES")
+                .fetch()
+                .all()
+                .map(it -> it.get("Database"))
+                .collectList()
+                .map(it->it.contains(mysqlDatabase))
                 .block();
 
-        Thread.sleep(2000);
-        log.info("数据库以及数据初始化完成。。");
+        Boolean hasTable = null;
+        if (hasDatabase != null && hasDatabase) {
+            hasTable = client.execute("USE " + mysqlDatabase + "; show tables like 'sys_user'")
+                    .fetch()
+                    .all()
+                    .collectList()
+                    .map(it -> it.size()>0)
+                    .block();
+        }
+
+        if (!(hasDatabase != null && hasTable !=null && hasTable)) {
+            String sqlScript = Files.readString(Path.of(sqlScriptPath));
+
+            client.execute(sqlScript)
+                    .fetch()
+                    .rowsUpdated()
+                    .then(sysUserService.findByUsername("admin"))
+                    .switchIfEmpty(
+                            initRole()
+                                    .then(initUser())
+                                    .then(initApi())
+                                    .then(Mono.empty())
+                    )
+                    .block();
+
+            Thread.sleep(2000);
+            log.info("数据库以及数据初始化完成。。");
+        }
     }
 
     private Mono<List<SysRole>> initRole () {
